@@ -190,7 +190,7 @@ class DesktopApp:
         style.configure("Muted.TLabel", background="#12161d", foreground="#8e99a8")
         style.configure("Header.TLabel", background="#090b0f", foreground="#f3f7fb", font=("Helvetica Neue", 28, "bold"))
         style.configure("SubHeader.TLabel", background="#090b0f", foreground="#8e99a8", font=("Helvetica Neue", 11))
-        style.configure("MetricValue.TLabel", background="#171c24", foreground="#f3f7fb", font=("Helvetica Neue", 22, "bold"))
+        style.configure("MetricValue.TLabel", background="#171c24", foreground="#f3f7fb", font=("Helvetica Neue", 17, "bold"))
         style.configure("MetricLabel.TLabel", background="#171c24", foreground="#8e99a8", font=("Helvetica Neue", 10))
         style.configure("TButton", background="#1a6cff", foreground="#f3f7fb", borderwidth=0, focusthickness=0, padding=8)
         style.map("TButton", background=[("active", "#2b7cff"), ("disabled", "#20242b")], foreground=[("disabled", "#6c7380")])
@@ -369,26 +369,26 @@ class DesktopApp:
         legend.pack(anchor="w", pady=(10, 0))
 
     def build_summary(self, parent):
-        summary = ttk.Frame(parent, style="Panel.TFrame", padding=12)
-        summary.pack(fill="x", pady=(10, 0))
-        ttk.Label(summary, text="Summary", font=("Helvetica Neue", 16, "bold")).pack(anchor="w")
+        summary = ttk.Frame(parent, style="Panel.TFrame", padding=10)
+        summary.pack(fill="x", pady=(8, 0))
+        ttk.Label(summary, text="Summary", font=("Helvetica Neue", 14, "bold")).pack(anchor="w")
 
         metrics = ttk.Frame(summary, style="Panel.TFrame")
-        metrics.pack(fill="x", pady=(8, 0))
+        metrics.pack(fill="x", pady=(6, 0))
         for label, variable in [
             ("イベント数", self.metric_events),
             ("僅差件数", self.metric_close),
             ("手動確認", self.metric_manual),
         ]:
-            card = ttk.Frame(metrics, style="Panel.TFrame", padding=10)
-            card.pack(fill="x", pady=(0, 6))
+            card = ttk.Frame(metrics, style="Panel.TFrame", padding=6)
+            card.pack(fill="x", pady=(0, 3))
             card.configure(style="Panel.TFrame")
             tk.Frame(card, bg="#171c24").pack(fill="both", expand=True)
             inner = card.winfo_children()[0]
-            ttk.Label(inner, text=label, style="MetricLabel.TLabel").pack(anchor="w", padx=10, pady=(10, 2))
-            ttk.Label(inner, textvariable=variable, style="MetricValue.TLabel").pack(anchor="w", padx=10, pady=(0, 10))
+            ttk.Label(inner, text=label, style="MetricLabel.TLabel").pack(anchor="w", padx=8, pady=(6, 0))
+            ttk.Label(inner, textvariable=variable, style="MetricValue.TLabel").pack(anchor="w", padx=8, pady=(0, 6))
 
-        ttk.Label(summary, textvariable=self.summary_text, style="Muted.TLabel", wraplength=320).pack(anchor="w", pady=(4, 0))
+        ttk.Label(summary, textvariable=self.summary_text, style="Muted.TLabel", wraplength=320).pack(anchor="w", pady=(2, 0))
         summary.bind(
             "<Configure>",
             lambda event: summary.winfo_children()[-1].configure(wraplength=max(280, event.width - 28))
