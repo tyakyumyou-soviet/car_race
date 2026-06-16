@@ -159,9 +159,9 @@ class DesktopApp:
         self.lap_count = tk.IntVar(value=3)
         self.start_mode = tk.StringVar(value="auto")
         self.direction = tk.StringVar(value="ltr")
-        self.camera_angle = tk.StringVar(value="right_front")
+        self.camera_angle = tk.StringVar(value="left_front")
         self.edit_line_target = tk.StringVar(value="finish")
-        self.yolo_profile = tk.StringVar(value="yolo26n")
+        self.yolo_profile = tk.StringVar(value="yolo26m")
         self.analysis_fps = tk.IntVar(value=60)
         self.close_finish_ms = tk.IntVar(value=50)
         self.motion_threshold = tk.IntVar(value=26)
@@ -174,6 +174,7 @@ class DesktopApp:
         self.metric_events = tk.StringVar(value="0")
         self.metric_close = tk.StringVar(value="0")
         self.metric_manual = tk.StringVar(value="0")
+        self.collapsible_sections: dict[str, tuple[ttk.Frame, tk.StringVar]] = {}
 
         self.build_ui()
         self.update_summary()
@@ -290,18 +291,18 @@ class DesktopApp:
         ttk.Button(action_row, text="リセット", command=self.reset_state).pack(side="left", fill="x", expand=True, padx=(6, 0))
 
         form = ttk.Frame(panel)
-        form.pack(fill="x", pady=(12, 0))
+        form.pack(fill="x", pady=(4, 0))
 
-        self.add_section_title(form, "Line")
+        line_form = self.add_collapsible_section(form, "Line")
         self.add_labeled_combo(
-            form,
+            line_form,
             "編集するライン",
             self.edit_line_target,
             [("ゴールライン", "finish"), ("スタートライン", "start"), ("編集しない", "none")],
             self.on_edit_line_target_changed,
         )
         self.add_labeled_combo(
-            form,
+            line_form,
             "カメラ位置",
             self.camera_angle,
             [
@@ -313,24 +314,24 @@ class DesktopApp:
             ],
             self.on_camera_angle_changed,
         )
-        self.add_labeled_spin(form, "ライン帯域(px)", self.line_band, 10, 320)
-        self.add_labeled_scale(form, "差分しきい値", self.motion_threshold, 5, 80)
+        self.add_labeled_spin(line_form, "ライン帯域(px)", self.line_band, 10, 320)
+        self.add_labeled_scale(line_form, "差分しきい値", self.motion_threshold, 5, 80)
 
-        self.add_section_title(form, "Race")
-        self.add_labeled_combo(form, "レースモード", self.race_mode, [("単純ゴール順", "finish"), ("周回モード", "lap")])
-        self.add_labeled_spin(form, "周回数", self.lap_count, 1, 99)
-        self.add_labeled_combo(form, "進行方向", self.direction, [("左 → 右", "ltr"), ("右 → 左", "rtl")])
+        race_form = self.add_collapsible_section(form, "Race")
+        self.add_labeled_combo(race_form, "レースモード", self.race_mode, [("単純ゴール順", "finish"), ("周回モード", "lap")])
+        self.add_labeled_spin(race_form, "周回数", self.lap_count, 1, 99)
+        self.add_labeled_combo(race_form, "進行方向", self.direction, [("左 → 右", "ltr"), ("右 → 左", "rtl")])
 
-        self.add_section_title(form, "Model")
+        model_form = self.add_collapsible_section(form, "Model")
         self.add_labeled_combo(
-            form,
+            model_form,
             "YOLOプロファイル",
             self.yolo_profile,
             [("Fast / yolo26n", "yolo26n"), ("Balanced / yolo26s", "yolo26s"), ("Accurate / yolo26m", "yolo26m")],
             self.on_yolo_changed,
         )
-        self.add_labeled_spin(form, "解析FPS", self.analysis_fps, 5, 120)
-        self.add_labeled_spin(form, "僅差閾値(ms)", self.close_finish_ms, 1, 500)
+        self.add_labeled_spin(model_form, "解析FPS", self.analysis_fps, 5, 120)
+        self.add_labeled_spin(model_form, "僅差閾値(ms)", self.close_finish_ms, 1, 500)
 
         status = ttk.Frame(panel, style="Panel.TFrame")
         status.pack(fill="x", pady=(14, 0))
@@ -362,8 +363,8 @@ class DesktopApp:
         )
         legend.pack(anchor="w", pady=(10, 0))
 
-        summary = ttk.Frame(parent, style="Panel.TFrame", padding=14)
-        summary.pack(fill="x", pady=(18, 0))
+        summary = ttk.Frame(parent, style="Panel.TFrame", padding=12)
+        summary.pack(fill="x", pady=(6, 0))
         ttk.Label(summary, text="Summary", font=("Helvetica Neue", 16, "bold")).pack(anchor="w")
 
         metrics = ttk.Frame(summary, style="Panel.TFrame")
@@ -457,6 +458,25 @@ class DesktopApp:
                 on_change()
 
         combo.bind("<<ComboboxSelected>>", handler)
+
+    def add_collapsible_section(self, parent, title):
+        section = ttk.Frame(parent, style="Panel.TFrame")
+        section.pack(fill="x", pady=(6, 0))
+        label_var = tk.StringVar(value=f"+ {title}")
+        button = ttk.Button(section, textvariable=label_var, command=lambda: self.toggle_section(title))
+        button.pack(fill="x")
+        body = ttk.Frame(section, style="Panel.TFrame")
+        self.collapsible_sections[title] = (body, label_var)
+        return body
+
+    def toggle_section(self, title):
+        body, label_var = self.collapsible_sections[title]
+        if body.winfo_manager():
+            body.pack_forget()
+            label_var.set(f"+ {title}")
+            return
+        body.pack(fill="x", pady=(8, 0))
+        label_var.set(f"- {title}")
 
     def add_section_title(self, parent, title):
         ttk.Label(parent, text=title, font=("Helvetica Neue", 13, "bold")).pack(anchor="w", pady=(14, 4))
