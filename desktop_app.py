@@ -308,7 +308,9 @@ class DesktopApp:
             ttk.Label(row, text=f"{label}:", width=10).pack(side="left")
             ttk.Label(row, textvariable=variable, style="Muted.TLabel", wraplength=260).pack(side="left", fill="x", expand=True)
 
-        line_form = self.add_collapsible_section(form, "Line")
+        setup_form = self.add_collapsible_section(form, "Setup")
+
+        line_form = self.add_collapsible_section(setup_form, "Line", key="Setup/Line")
         self.add_labeled_combo(
             line_form,
             "編集するライン",
@@ -332,12 +334,12 @@ class DesktopApp:
         self.add_labeled_spin(line_form, "ライン帯域(px)", self.line_band, 10, 320)
         self.add_labeled_scale(line_form, "差分しきい値", self.motion_threshold, 5, 80)
 
-        race_form = self.add_collapsible_section(form, "Race")
+        race_form = self.add_collapsible_section(setup_form, "Race", key="Setup/Race")
         self.add_labeled_combo(race_form, "レースモード", self.race_mode, [("単純ゴール順", "finish"), ("周回モード", "lap")])
         self.add_labeled_spin(race_form, "周回数", self.lap_count, 1, 99)
         self.add_labeled_combo(race_form, "進行方向", self.direction, [("左 → 右", "ltr"), ("右 → 左", "rtl")])
 
-        model_form = self.add_collapsible_section(form, "Model")
+        model_form = self.add_collapsible_section(setup_form, "Model", key="Setup/Model")
         self.add_labeled_combo(
             model_form,
             "YOLOプロファイル",
@@ -463,18 +465,19 @@ class DesktopApp:
 
         combo.bind("<<ComboboxSelected>>", handler)
 
-    def add_collapsible_section(self, parent, title):
+    def add_collapsible_section(self, parent, title, key=None):
+        section_key = key or title
         section = ttk.Frame(parent, style="Panel.TFrame")
         section.pack(fill="x", pady=(6, 0))
         label_var = tk.StringVar(value=f"+ {title}")
-        button = ttk.Button(section, textvariable=label_var, command=lambda: self.toggle_section(title))
+        button = ttk.Button(section, textvariable=label_var, command=lambda: self.toggle_section(section_key))
         button.pack(fill="x")
         body = ttk.Frame(section, style="Panel.TFrame")
-        self.collapsible_sections[title] = (body, label_var)
+        self.collapsible_sections[section_key] = (body, label_var, title)
         return body
 
-    def toggle_section(self, title):
-        body, label_var = self.collapsible_sections[title]
+    def toggle_section(self, key):
+        body, label_var, title = self.collapsible_sections[key]
         if body.winfo_manager():
             body.pack_forget()
             label_var.set(f"+ {title}")
