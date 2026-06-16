@@ -4,6 +4,7 @@ import queue
 import tempfile
 import threading
 import time
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 import shutil
@@ -31,6 +32,7 @@ TRACK_FEATURE_BINS = 48
 TRACK_MATCH_THRESHOLD = 0.22
 TRACK_REUSE_MIN_GAP_MS = 1200
 WORKER_STOP = object()
+YOLO_DOWNLOAD_BASE = "https://github.com/ultralytics/assets/releases/download/v8.4.0"
 
 
 def cleanup_temp_dir():
@@ -1083,18 +1085,29 @@ class DesktopApp:
             except Exception as exc:
                 self.yolo_import_error = exc
                 raise
-        effective_profile = profile
+        weights_path = self.ensure_yolo_weights(profile)
+        if profile not in self.yolo_models:
+            self.yolo_models[profile] = self.yolo_class(str(weights_path))
+        return profile, self.yolo_models[profile]
+
+    def ensure_yolo_weights(self, profile: str):
         weights_path = APP_DIR / f"{profile}.pt"
-        if not weights_path.exists():
-            fallback_path = APP_DIR / "yolo26n.pt"
-            if not fallback_path.exists():
-                raise FileNotFoundError(f"{weights_path.name} が見つかりません: {weights_path}")
-            self.safe_after(0, lambda missing=weights_path.name: self.yolo_state.set(f"{missing} 未配置: yolo26nへ切替"))
-            effective_profile = "yolo26n"
-            weights_path = fallback_path
-        if effective_profile not in self.yolo_models:
-            self.yolo_models[effective_profile] = self.yolo_class(str(weights_path))
-        return effective_profile, self.yolo_models[effective_profile]
+        if weights_path.exists() and weights_path.stat().st_size > 0:
+            return weights_path
+
+        url = f"{YOLO_DOWNLOAD_BASE}/{profile}.pt"
+        temp_path = weights_path.with_suffix(".pt.download")
+        self.safe_after(0, lambda p=profile: self.yolo_state.set(f"{p}.pt を取得中"))
+        try:
+            urllib.request.urlretrieve(url, temp_path)
+            if not temp_path.exists() or temp_path.stat().st_size == 0:
+                raise FileNotFoundError(f"{profile}.pt の取得に失敗しました")
+            temp_path.replace(weights_path)
+            self.safe_after(0, lambda p=profile: self.yolo_state.set(f"{p}.pt 取得完了"))
+            return weights_path
+        except Exception:
+            self.safe_unlink(temp_path)
+            raise
 
     def extract_yolo_boxes(self, result):
         names = getattr(result, "names", {}) or {}
