@@ -219,15 +219,6 @@ class DesktopApp:
         self.scroll_canvas.bind_all("<Button-4>", self.on_linux_scroll_up)
         self.scroll_canvas.bind_all("<Button-5>", self.on_linux_scroll_down)
 
-        header = ttk.Frame(self.outer)
-        header.pack(fill="x")
-        ttk.Label(header, text=APP_TITLE, style="Header.TLabel").pack(anchor="w")
-        ttk.Label(
-            header,
-            text="録画動画のスタート/ゴール検出、順位確認、僅差レビューを行うデスクトップ検証ツール",
-            style="SubHeader.TLabel",
-        ).pack(anchor="w", pady=(4, 14))
-
         self.top_frame = ttk.Frame(self.outer)
         self.top_frame.pack(fill="both", expand=True)
         self.top_frame.rowconfigure(0, weight=1)
