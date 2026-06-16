@@ -131,6 +131,7 @@ class DesktopApp:
         self.analysis_generation = 0
         self.run_temp_dir = TEMP_DIR / "run_0"
         self.yolo_models = {}
+        self.yolo_model_lock = threading.Lock()
         self.yolo_class = None
         self.yolo_import_error = None
         self.preview_update_interval_s = 0.16
@@ -179,6 +180,7 @@ class DesktopApp:
         self.build_ui()
         self.update_summary()
         self.root.after(30, self.process_ui_queue)
+        self.safe_after(100, lambda: threading.Thread(target=self.preload_default_yolo, daemon=True).start())
         self.yolo_worker_thread.start()
 
     def build_ui(self):
@@ -444,13 +446,18 @@ class DesktopApp:
         frame = ttk.Frame(parent, style="Panel.TFrame")
         frame.pack(fill="x", pady=4)
         ttk.Label(frame, text=label, style="Muted.TLabel").pack(anchor="w")
-        combo = ttk.Combobox(frame, textvariable=variable, state="readonly", values=[text for text, _ in values])
+        display_var = tk.StringVar()
+        combo = ttk.Combobox(frame, textvariable=display_var, state="readonly", values=[text for text, _ in values])
         combo.pack(fill="x")
         reverse = {text: value for text, value in values}
-        combo.set(next(text for text, value in values if value == variable.get()))
+        labels_by_value = {value: text for text, value in values}
+        display_var.set(labels_by_value.get(variable.get(), values[0][0]))
 
         def handler(_event=None):
-            variable.set(reverse[combo.get()])
+            selected = reverse.get(display_var.get())
+            if selected is None:
+                return
+            variable.set(selected)
             if on_change:
                 on_change()
 
@@ -628,6 +635,15 @@ class DesktopApp:
     def on_yolo_changed(self):
         self.yolo_state.set(f"{self.yolo_profile.get()} selected")
         self.update_summary()
+        threading.Thread(target=self.preload_default_yolo, daemon=True).start()
+
+    def preload_default_yolo(self):
+        profile = self.yolo_profile.get()
+        try:
+            resolved, _model = self.get_yolo_model(profile)
+            self.safe_after(0, lambda p=resolved: self.yolo_state.set(f"{p} loaded"))
+        except Exception as exc:
+            self.safe_after(0, lambda e=exc: self.yolo_state.set(f"YOLO load failed: {type(e).__name__}: {e}"))
 
     def on_camera_angle_changed(self):
         self.reset_default_lines()
@@ -1096,17 +1112,18 @@ class DesktopApp:
             return YoloResult(profile, 0.0, False, [])
 
     def get_yolo_model(self, profile: str):
-        if self.yolo_class is None:
-            try:
-                from ultralytics import YOLO as UltralyticsYOLO
-                self.yolo_class = UltralyticsYOLO
-            except Exception as exc:
-                self.yolo_import_error = exc
-                raise
-        weights_path = self.ensure_yolo_weights(profile)
-        if profile not in self.yolo_models:
-            self.yolo_models[profile] = self.yolo_class(str(weights_path))
-        return profile, self.yolo_models[profile]
+        with self.yolo_model_lock:
+            if self.yolo_class is None:
+                try:
+                    from ultralytics import YOLO as UltralyticsYOLO
+                    self.yolo_class = UltralyticsYOLO
+                except Exception as exc:
+                    self.yolo_import_error = exc
+                    raise
+            weights_path = self.ensure_yolo_weights(profile)
+            if profile not in self.yolo_models:
+                self.yolo_models[profile] = self.yolo_class(str(weights_path))
+            return profile, self.yolo_models[profile]
 
     def ensure_yolo_weights(self, profile: str):
         weights_path = APP_DIR / f"{profile}.pt"
