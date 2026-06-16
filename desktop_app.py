@@ -241,6 +241,7 @@ class DesktopApp:
         right.grid(row=0, column=1, sticky="nsew", padx=(18, 0))
 
         self.build_controls(left)
+        self.build_summary(left)
         self.build_viewer(right)
         self.build_results(self.outer)
 
@@ -276,22 +277,36 @@ class DesktopApp:
         panel = ttk.Frame(parent, style="Panel.TFrame", padding=14)
         panel.pack(fill="both")
 
-        ttk.Label(panel, text="Race Setup", font=("Helvetica Neue", 18, "bold")).pack(anchor="w", pady=(0, 4))
-        ttk.Label(panel, text="動画を選ぶと自動で解析します。ラインはプレビュー上で2点クリックして合わせます。", style="Muted.TLabel", wraplength=320).pack(anchor="w", pady=(0, 12))
-
-        self.video_name_label = ttk.Label(panel, text="動画未選択", style="Muted.TLabel", wraplength=320)
-        self.video_name_label.pack(anchor="w", pady=(0, 8))
-        panel.bind("<Configure>", lambda event: self.video_name_label.configure(wraplength=max(220, event.width - 24)))
-
+        ttk.Label(panel, text="Race Setup", font=("Helvetica Neue", 18, "bold")).pack(anchor="w", pady=(0, 10))
         ttk.Button(panel, text="動画を開いて解析", command=self.open_video).pack(fill="x", pady=(0, 8))
         action_row = ttk.Frame(panel, style="Panel.TFrame")
-        action_row.pack(fill="x", pady=(0, 12))
+        action_row.pack(fill="x", pady=(0, 6))
         self.analyze_button = ttk.Button(action_row, text="再解析", command=self.start_analysis)
         self.analyze_button.pack(side="left", fill="x", expand=True, padx=(0, 6))
         ttk.Button(action_row, text="リセット", command=self.reset_state).pack(side="left", fill="x", expand=True, padx=(6, 0))
 
         form = ttk.Frame(panel)
         form.pack(fill="x", pady=(4, 0))
+
+        status_form = self.add_collapsible_section(form, "Status")
+        ttk.Label(
+            status_form,
+            text="動画を選ぶと自動で解析します。ラインはプレビュー上で2点クリックして合わせます。",
+            style="Muted.TLabel",
+            wraplength=320,
+        ).pack(anchor="w", pady=(0, 8))
+        self.video_name_label = ttk.Label(status_form, text="動画未選択", style="Muted.TLabel", wraplength=320)
+        self.video_name_label.pack(anchor="w", pady=(0, 8))
+        panel.bind("<Configure>", lambda event: self.video_name_label.configure(wraplength=max(220, event.width - 24)))
+        for label, variable in [
+            ("状態", self.status_text),
+            ("自動開始", self.auto_state),
+            ("YOLO", self.yolo_state),
+        ]:
+            row = ttk.Frame(status_form, style="Panel.TFrame")
+            row.pack(fill="x", pady=2)
+            ttk.Label(row, text=f"{label}:", width=10).pack(side="left")
+            ttk.Label(row, textvariable=variable, style="Muted.TLabel", wraplength=260).pack(side="left", fill="x", expand=True)
 
         line_form = self.add_collapsible_section(form, "Line")
         self.add_labeled_combo(
@@ -333,18 +348,6 @@ class DesktopApp:
         self.add_labeled_spin(model_form, "解析FPS", self.analysis_fps, 5, 120)
         self.add_labeled_spin(model_form, "僅差閾値(ms)", self.close_finish_ms, 1, 500)
 
-        status = ttk.Frame(panel, style="Panel.TFrame")
-        status.pack(fill="x", pady=(14, 0))
-        for label, variable in [
-            ("状態", self.status_text),
-            ("自動開始", self.auto_state),
-            ("YOLO", self.yolo_state),
-        ]:
-            row = ttk.Frame(status, style="Panel.TFrame")
-            row.pack(fill="x", pady=2)
-            ttk.Label(row, text=f"{label}:", width=10).pack(side="left")
-            ttk.Label(row, textvariable=variable, style="Muted.TLabel", wraplength=260).pack(side="left", fill="x", expand=True)
-
     def build_viewer(self, parent):
         viewer = ttk.Frame(parent, style="Panel.TFrame", padding=14)
         viewer.pack(fill="both", expand=True)
@@ -363,26 +366,27 @@ class DesktopApp:
         )
         legend.pack(anchor="w", pady=(10, 0))
 
+    def build_summary(self, parent):
         summary = ttk.Frame(parent, style="Panel.TFrame", padding=12)
-        summary.pack(fill="x", pady=(6, 0))
+        summary.pack(fill="x", pady=(10, 0))
         ttk.Label(summary, text="Summary", font=("Helvetica Neue", 16, "bold")).pack(anchor="w")
 
         metrics = ttk.Frame(summary, style="Panel.TFrame")
-        metrics.pack(fill="x", pady=(10, 0))
+        metrics.pack(fill="x", pady=(8, 0))
         for label, variable in [
             ("イベント数", self.metric_events),
             ("僅差件数", self.metric_close),
             ("手動確認", self.metric_manual),
         ]:
             card = ttk.Frame(metrics, style="Panel.TFrame", padding=10)
-            card.pack(side="left", fill="both", expand=True, padx=(0, 8))
+            card.pack(fill="x", pady=(0, 6))
             card.configure(style="Panel.TFrame")
             tk.Frame(card, bg="#171c24").pack(fill="both", expand=True)
             inner = card.winfo_children()[0]
             ttk.Label(inner, text=label, style="MetricLabel.TLabel").pack(anchor="w", padx=10, pady=(10, 2))
             ttk.Label(inner, textvariable=variable, style="MetricValue.TLabel").pack(anchor="w", padx=10, pady=(0, 10))
 
-        ttk.Label(summary, textvariable=self.summary_text, style="Muted.TLabel", wraplength=760).pack(anchor="w", pady=(8, 0))
+        ttk.Label(summary, textvariable=self.summary_text, style="Muted.TLabel", wraplength=320).pack(anchor="w", pady=(4, 0))
         summary.bind(
             "<Configure>",
             lambda event: summary.winfo_children()[-1].configure(wraplength=max(280, event.width - 28))
